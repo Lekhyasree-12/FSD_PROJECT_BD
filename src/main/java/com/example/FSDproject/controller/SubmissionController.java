@@ -7,7 +7,6 @@ import org.springframework.web.bind.annotation.*;
 import com.example.FSDproject.model.Submission;
 import com.example.FSDproject.service.SubmissionService;
 
-import java.io.File;
 import org.springframework.web.multipart.MultipartFile;
 
 @RestController
@@ -23,28 +22,18 @@ public class SubmissionController {
         return service.getAll();
     }
 
-    // 🔥 CREATE (UPLOAD)
+    // 🔥 CREATE (UPLOAD) - FIXED (NO FILE STORAGE)
     @PostMapping
     public Submission uploadFile(
             @RequestParam("file") MultipartFile file,
             @RequestParam("studentId") Long studentId,
-            @RequestParam("assignmentId") Long assignmentId) throws Exception {
-
-        String uploadDir = System.getProperty("user.dir") + "/uploads/";
-        File dir = new File(uploadDir);
-
-        if (!dir.exists()) {
-            dir.mkdirs();
-        }
-
-        String filePath = uploadDir + file.getOriginalFilename();
-        file.transferTo(new File(filePath));
+            @RequestParam("assignmentId") Long assignmentId) {
 
         Submission s = new Submission();
         s.setStudentId(studentId);
         s.setAssignmentId(assignmentId);
         s.setFileName(file.getOriginalFilename());
-        s.setFilePath(filePath);
+        s.setFilePath("uploaded"); // dummy (Render safe)
 
         return service.save(s);
     }
@@ -55,11 +44,11 @@ public class SubmissionController {
         service.delete(id);
     }
 
-    // 🔥 UPDATE (RE-UPLOAD FILE)
+    // 🔥 UPDATE (RE-UPLOAD FILE) - FIXED
     @PutMapping("/{id}")
     public Submission updateFile(
             @PathVariable Long id,
-            @RequestParam("file") MultipartFile file) throws Exception {
+            @RequestParam("file") MultipartFile file) {
 
         Submission s = service.getById(id);
 
@@ -67,22 +56,19 @@ public class SubmissionController {
             throw new RuntimeException("Submission not found");
         }
 
-        String uploadDir = System.getProperty("user.dir") + "/uploads/";
-        String filePath = uploadDir + file.getOriginalFilename();
-
-        file.transferTo(new File(filePath));
-
         s.setFileName(file.getOriginalFilename());
-        s.setFilePath(filePath);
+        s.setFilePath("updated"); // dummy
 
         return service.save(s);
     }
 
-    // 🔥 GET BY ID (optional but useful)
+    // 🔥 GET BY ID
     @GetMapping("/{id}")
     public Submission getById(@PathVariable Long id) {
         return service.getById(id);
     }
+
+    // 🔥 GRADE
     @PutMapping("/{id}/grade")
     public Submission gradeSubmission(
             @PathVariable Long id,
