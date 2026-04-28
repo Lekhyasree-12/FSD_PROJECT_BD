@@ -1,6 +1,8 @@
 package com.example.FSDproject.controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import com.example.FSDproject.model.User;
@@ -16,45 +18,27 @@ public class UserController {
 
     // 🔥 REGISTER USER
     @PostMapping("/register")
-    public User register(@RequestBody User user) {
-
-        // Validate input
+    public ResponseEntity<?> register(@RequestBody User user) {
         if (user == null || user.getEmail() == null || user.getPassword() == null) {
-            throw new RuntimeException("Invalid user data");
+            return ResponseEntity.badRequest().body("Invalid user data");
         }
-
-        // Optional: prevent duplicate emails
         User existing = repo.findByEmail(user.getEmail());
         if (existing != null) {
-            throw new RuntimeException("Email already exists");
+            return ResponseEntity.status(HttpStatus.CONFLICT).body("Email already exists");
         }
-
-        return repo.save(user);
+        return ResponseEntity.ok(repo.save(user));
     }
 
     // 🔥 LOGIN USER
     @PostMapping("/login")
-    public User login(@RequestBody User user) {
-
-        // 🔒 Validate request
+    public ResponseEntity<?> login(@RequestBody User user) {
         if (user == null || user.getEmail() == null || user.getPassword() == null) {
-            return null;
+            return ResponseEntity.badRequest().body("Invalid credentials");
         }
-
-        // 🔍 Find user
         User existing = repo.findByEmail(user.getEmail());
-
-        // ❌ User not found
-        if (existing == null) {
-            return null;
+        if (existing == null || !existing.getPassword().equals(user.getPassword())) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid email or password");
         }
-
-        // ❌ Password mismatch
-        if (!existing.getPassword().equals(user.getPassword())) {
-            return null;
-        }
-
-        // ✅ Success
-        return existing;
+        return ResponseEntity.ok(existing);
     }
 }
