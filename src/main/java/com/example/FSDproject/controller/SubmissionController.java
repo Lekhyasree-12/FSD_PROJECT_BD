@@ -1,5 +1,10 @@
 package com.example.FSDproject.controller;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -22,18 +27,23 @@ public class SubmissionController {
         return service.getAll();
     }
 
-    // 🔥 CREATE (UPLOAD) - FIXED (NO FILE STORAGE)
+    // 🔥 CREATE (UPLOAD)
     @PostMapping
     public Submission uploadFile(
             @RequestParam("file") MultipartFile file,
             @RequestParam("studentId") Long studentId,
-            @RequestParam("assignmentId") Long assignmentId) {
+            @RequestParam("assignmentId") Long assignmentId) throws IOException {
+
+        String uploadDir = "/tmp/uploads/";
+        Files.createDirectories(Paths.get(uploadDir));
+        Path filePath = Paths.get(uploadDir + file.getOriginalFilename());
+        Files.write(filePath, file.getBytes());
 
         Submission s = new Submission();
         s.setStudentId(studentId);
         s.setAssignmentId(assignmentId);
         s.setFileName(file.getOriginalFilename());
-        s.setFilePath("uploaded"); // dummy (Render safe)
+        s.setFilePath(filePath.toString());
 
         return service.save(s);
     }
@@ -44,20 +54,22 @@ public class SubmissionController {
         service.delete(id);
     }
 
-    // 🔥 UPDATE (RE-UPLOAD FILE) - FIXED
+    // 🔥 UPDATE (RE-UPLOAD FILE)
     @PutMapping("/{id}")
     public Submission updateFile(
             @PathVariable Long id,
-            @RequestParam("file") MultipartFile file) {
+            @RequestParam("file") MultipartFile file) throws IOException {
 
         Submission s = service.getById(id);
+        if (s == null) throw new RuntimeException("Submission not found");
 
-        if (s == null) {
-            throw new RuntimeException("Submission not found");
-        }
+        String uploadDir = "/tmp/uploads/";
+        Files.createDirectories(Paths.get(uploadDir));
+        Path filePath = Paths.get(uploadDir + file.getOriginalFilename());
+        Files.write(filePath, file.getBytes());
 
         s.setFileName(file.getOriginalFilename());
-        s.setFilePath("updated"); // dummy
+        s.setFilePath(filePath.toString());
 
         return service.save(s);
     }
