@@ -1,60 +1,54 @@
 package com.example.FSDproject.controller;
 
-import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.util.Base64;
 import java.util.List;
+
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.example.FSDproject.model.Submission;
 import com.example.FSDproject.service.SubmissionService;
 
-import org.springframework.web.multipart.MultipartFile;
-
 @RestController
 @RequestMapping("/submissions")
+@CrossOrigin(origins = "*")
 public class SubmissionController {
 
     @Autowired
     private SubmissionService service;
 
-    // 🔥 GET ALL
     @GetMapping
     public List<Submission> getAll() {
         return service.getAll();
     }
 
-    // 🔥 CREATE (UPLOAD)
+    @GetMapping("/{id}")
+    public Submission getById(@PathVariable Long id) {
+        return service.getById(id);
+    }
+
+    // Upload - store file as Base64 in DB
     @PostMapping
     public Submission uploadFile(
             @RequestParam("file") MultipartFile file,
             @RequestParam("studentId") Long studentId,
             @RequestParam("assignmentId") Long assignmentId) throws IOException {
 
-        String uploadDir = "/tmp/uploads/";
-        Files.createDirectories(Paths.get(uploadDir));
-        Path filePath = Paths.get(uploadDir + file.getOriginalFilename());
-        Files.write(filePath, file.getBytes());
-
         Submission s = new Submission();
         s.setStudentId(studentId);
         s.setAssignmentId(assignmentId);
         s.setFileName(file.getOriginalFilename());
-        s.setFilePath(filePath.toString());
+        s.setFileData(Base64.getEncoder().encodeToString(file.getBytes()));
 
         return service.save(s);
     }
 
-    // 🔥 DELETE
-    @DeleteMapping("/{id}")
-    public void delete(@PathVariable Long id) {
-        service.delete(id);
-    }
-
-    // 🔥 UPDATE (RE-UPLOAD FILE)
+    // Re-upload - update file in DB
     @PutMapping("/{id}")
     public Submission updateFile(
             @PathVariable Long id,
@@ -63,38 +57,48 @@ public class SubmissionController {
         Submission s = service.getById(id);
         if (s == null) throw new RuntimeException("Submission not found");
 
-        String uploadDir = "/tmp/uploads/";
-        Files.createDirectories(Paths.get(uploadDir));
-        Path filePath = Paths.get(uploadDir + file.getOriginalFilename());
-        Files.write(filePath, file.getBytes());
-
         s.setFileName(file.getOriginalFilename());
-        s.setFilePath(filePath.toString());
+        s.setFileData(Base64.getEncoder().encodeToString(file.getBytes()));
 
         return service.save(s);
     }
 
-    // 🔥 GET BY ID
-    @GetMapping("/{id}")
-    public Submission getById(@PathVariable Long id) {
-        return service.getById(id);
+    // View/Download file - decode Base64 and return as file response
+    @GetMapping("/{id}/file")
+    public ResponseEntity<byte[]> viewFile(@PathVariable Long id) {
+        Submission s = service.getById(id);
+        if (s == null || s.getFileData() == null)
+            return ResponseEntity.notFound().build();
+
+        byte[] fileBytes = Base64.getDecoder().decode(s.getFileData());
+        String fileName = s.getFileName() != null ? s.getFileName() : "file";
+
+        MediaType mediaType = MediaType.APPLICATION_OCTET_STREAM;
+        if (fileName.endsWith(".pdf")) mediaType = MediaType.APPLICATION_PDF;
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + fileName + "\"")
+                .contentType(mediaType)
+                .body(fileBytes);
     }
 
-    // 🔥 GRADE
+    // Grade
     @PutMapping("/{id}/grade")
     public Submission gradeSubmission(
             @PathVariable Long id,
             @RequestBody Submission updated) {
 
         Submission s = service.getById(id);
-
-        if (s == null) {
-            throw new RuntimeException("Submission not found");
-        }
+        if (s == null) throw new RuntimeException("Submission not found");
 
         s.setScore(updated.getScore());
         s.setFeedback(updated.getFeedback());
 
         return service.save(s);
+    }
+
+    @DeleteMapping("/{id}")
+    public void delete(@PathVariable Long id) {
+        service.delete(id);
     }
 }

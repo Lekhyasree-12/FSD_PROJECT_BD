@@ -11,11 +11,12 @@ public class Submission {
 
     private Long studentId;
     private Long assignmentId;
-    private String fileUrl;
     private String fileName;
-    private String filePath;
     private Integer score;
     private String feedback;
+
+    @Column(columnDefinition = "LONGTEXT")
+    private String fileData; // Base64 encoded file content
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -26,13 +27,12 @@ public class Submission {
     public Long getAssignmentId() { return assignmentId; }
     public void setAssignmentId(Long assignmentId) { this.assignmentId = assignmentId; }
 
-    public String getFileUrl() { return fileUrl; }
-    public void setFileUrl(String fileUrl) { this.fileUrl = fileUrl; }
     public String getFileName() { return fileName; }
     public void setFileName(String fileName) { this.fileName = fileName; }
 
-    public String getFilePath() { return filePath; }
-    public void setFilePath(String filePath) { this.filePath = filePath; }
+    public String getFileData() { return fileData; }
+    public void setFileData(String fileData) { this.fileData = fileData; }
+
     public Integer getScore() { return score; }
     public void setScore(Integer score) { this.score = score; }
 
